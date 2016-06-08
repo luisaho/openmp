@@ -27,7 +27,7 @@
 #include "solver.h"
 #include "output.h"
 
-int threads = 64;
+int threads = 32;
 
 
 /* ab <- a' * b */
@@ -36,7 +36,7 @@ void vectorDot(const floatType* a, const floatType* b, const int n, floatType* a
 	int i;
 	floatType temp;
 	temp=0;
-#pragma omp parallel for reduction(+:temp) num_threads(threads) 
+#pragma omp parallel for reduction(+:temp) num_threads(threads) private(i)
 	for(i=0; i<n; i++){
 		temp += a[i]*b[i];
 	}
@@ -48,7 +48,7 @@ void vectorDot(const floatType* a, const floatType* b, const int n, floatType* a
 /* y <- ax + y */
 void axpy(const floatType a, const floatType* x, const int n, floatType* y){
 	int i;
-#pragma omp parallel for num_threads(threads)
+#pragma omp parallel for num_threads(threads) private(i)
 	for(i=0; i<n; i++){
 		y[i]=a*x[i]+y[i];
 	}
@@ -57,7 +57,7 @@ void axpy(const floatType a, const floatType* x, const int n, floatType* y){
 /* y <- x + ay */
 void xpay(const floatType* x, const floatType a, const int n, floatType* y){
 	int i;
-#pragma omp parallel for num_threads(threads)
+#pragma omp parallel for num_threads(threads) private(i)
 	for(i=0; i<n; i++){
 		y[i]=x[i]+a*y[i];
 	}
@@ -67,9 +67,7 @@ void xpay(const floatType* x, const floatType a, const int n, floatType* y){
  * Remember that A is stored in the ELLPACK-R format (data, indices, length, n, nnz, maxNNZ). */
 void matvec(const int n, const int nnz, const int maxNNZ, const floatType* data, const int* indices, const int* length, const floatType* x, floatType* y){
 	int i, j, k;
-#pragma omp parallel num_threads(threads)
-{
-	#pragma omp for 
+	#pragma omp parallel for num_threads(threads) private(i, j, k)
 	for (i = 0; i < n; i++) {
 	y[i] = 0.0;
 	for (j = 0; j < length[i]; j++) {
@@ -77,15 +75,14 @@ void matvec(const int n, const int nnz, const int maxNNZ, const floatType* data,
 	y[i] += data[k] * x[indices[k]];
 	}
 
+	}
 }
-}
-
 /* nrm <- ||x||_2 */
 void nrm2(const floatType* x, const int n, floatType* nrm){
 	int i;
 	floatType temp;
 	temp = 0;
-#pragma omp parallel for reduction(+:temp) num_threads(threads)
+#pragma omp parallel for reduction(+:temp) num_threads(threads) private(i)
 	for(i = 0; i<n; i++){
 		temp+=(x[i]*x[i]);
 	}
